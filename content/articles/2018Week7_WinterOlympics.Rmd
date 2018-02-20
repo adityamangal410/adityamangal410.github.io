@@ -1,0 +1,175 @@
+---
+title: The Winter Olympics: MakeOverMonday 2018 Week7
+author: Aditya Mangal
+date: 2018-2-15 17:51
+Category: MakeOverMonday
+Tags: R, Visualizations, MakeOverMonday, DataAnalysis, DataScience, Olympics
+output: 
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Goal of this Visualization task is to create an alternative visualization to the <a href="https://public.tableau.com/views/TheWinterOlympics/TheWinterOlympics?:embed=y&:showVizHome=no" target="_blank">Tableau's visualization for Winter Olympics data for different countries.</a>
+
+In this blog post, I'm trying to generate a World Choropleth Map showing the total counts of medals for each country.
+
+## Cleaning up workspace and loading required libraries
+
+```{r Cleanup, results='hide'}
+rm(list = ls())
+```
+
+```{r Load Libraries, results='hide'}
+library(tidyverse) #Data Wrangling
+library(readxl) #Data Ingestion
+library(plotly) #Data Visualization
+```
+## Obtaining Data
+
+Reading and viewing the dataset
+```{r Reading Data, results='hide'}
+olympics = read_excel("/tmp/Winer Olympic Medals.xlsx")
+```
+```{r Viewing Data}
+olympics
+```
+
+Summarizing and getting stats to better understand the dataset
+
+```{r Data Stats}
+olympics %>% 
+  glimpse()
+olympics %>% 
+  summary()
+```
+
+## Scrubbing data
+
+As per the dataset requirement, East and West Germany are to be grouped with Germany and Soviet Union and the 1992 Unified Team needs to be combined with Russia
+
+```{r Combine countries}
+olympics = olympics %>% 
+  mutate(Country = recode(Country, "Soviet Union" = "Russia", "Unified Team" = "Russia",
+                          "East Germany" = "Germany", "West Germany" = "Germany"))
+```
+
+Reading in the ISO-3166 country codes dataset in order to generate the choropleth
+
+```{r Read ISO-3166 country codes dataset, results='hide'}
+countryCodes = read_csv("https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv")
+```
+```{r View ISO-3166 country codes dataset}
+countryCodes
+```
+
+Joining the 2 datasets and verifying if any country name mismatch happening in the 2.
+
+```{r Check if country names mismatch}
+olympics %>% 
+  left_join(countryCodes, by=c("Country" = "name")) %>% 
+  filter(is.na(`alpha-3`)) %>% 
+  select(Country) %>% 
+  unique()
+```
+
+Looks like above 7 countries do not have a corresponding entry in the countryCodes dataset.
+Lets try to find out the corresponding names for each of the 7 in the countryCodes dataset.
+
+```{r Find mismatch names in countryCodes}
+countryCodes %>% 
+  filter(str_detect(str_to_lower(name), "britain")) #United Kingdom of Great Britain and Northern Ireland
+countryCodes %>% 
+  filter(str_detect(str_to_lower(name), "states")) #United States of America
+countryCodes %>% 
+  filter(str_detect(str_to_lower(name), "czech")) #Czech Republic
+countryCodes %>% 
+  filter(str_detect(str_to_lower(name), "russia")) #Russian Federation
+countryCodes %>% 
+  filter(str_detect(str_to_lower(name), "korea")) #Korea (Democratic People's Republic of) = North Korea, Korea (Republic of) = South Korea
+countryCodes %>% 
+  filter(str_detect(str_to_lower(name), "yugo")) #Macedonia (the former Yugoslav Republic of)
+```
+
+Renaming mismatched countries in olympic dataset based on countryCodes dataset.
+
+```{r Rename mismatches}
+olympics = olympics %>% 
+  mutate(Country = recode(Country,
+                          "Britain" = "United Kingdom of Great Britain and Northern Ireland",
+                          "United States" = "United States of America",
+                          "Czechoslovakia" = "Czech Republic",
+                          "Russia" = "Russian Federation",
+                          "North Korea" = "Korea (Democratic People's Republic of)",
+                          "South Korea" = "Korea (Republic of)",
+                          "Yugoslavia" = "Macedonia (the former Yugoslav Republic of)"))
+```
+
+Joining and viewing the 2 datasets
+
+```{r Join Data}
+olympics = olympics %>% 
+  left_join(countryCodes, by=c("Country" = "name"))
+olympics
+```
+
+Aggregating per country to find the total number of medals for each country and its corresponding alpha-3 code.
+
+```{r Aggregating per country for Total Medals}
+TotalMedalsPerCountry = olympics %>% 
+  group_by(Country, `alpha-3`) %>% 
+  summarise(TotalMedals = n()) %>% 
+  rename(Code = `alpha-3`)
+TotalMedalsPerCountry
+```
+
+Lets see the top countries based on total number of medals
+
+```{r Top Countries}
+TotalMedalsPerCountry %>% 
+  arrange(desc(TotalMedals))
+```
+
+Germany obtained the most number of medals (377) closely followed by Russia with (341)
+
+## Exploring Data
+
+Lets plot the above data on a choropleth using plotly.
+
+```{r Plotting, results='hide'}
+# light grey boundaries
+l = list(color = toRGB("grey"), width = 0.5)
+
+# specify map projection/options
+g = list(
+  showframe = TRUE,
+  showcoastlines = TRUE,
+  projection = list(type = 'Mercator')
+)
+
+p = TotalMedalsPerCountry %>%  
+  plot_geo() %>%
+  add_trace(
+    z = ~TotalMedals, color = ~TotalMedals, 
+    text = ~Country, locations = ~Code, marker = list(line = l)
+  ) %>%
+  colorbar(title = 'Medal Counts') %>%
+  layout(
+    title = 'Number of Medals Per Country In Winter Olympics <br>Source: <a href="https://data.world/makeovermonday/2018w7-the-winter-olympics">Data.World Winter Olympics Dataset</a>',
+    geo = g
+  )
+
+chart_link = api_create(p, filename = "The Winter Olympics: MakeOverMonday 2018 Week 7", fileopt = 'overwrite')
+```
+```{r}
+chart_link
+```
+
+
+As can be clearly seen above, Norway and USA closely followed in the total medals ranking. 
+Visualizing data on choropleth can provide a clear view of the overall data.
+
+I'll try and build more visualizations on this dataset to better understand it in other posts.
+
