@@ -19,6 +19,9 @@ Setup Steps -
 - [ ] source activate portfolio
 - [ ] pip install pelican
 - [ ] pip install markdown
-- [ ] pip install Fabric
+- [ ] pip install Fabric3
 - [ ] pip install livereload
 - [ ] pip install ghp-import
+- [ ] git clone --recursive https://github.com/getpelican/pelican-themes ~/pelican-themes
+- [ ] git clone --recursive https://github.com/getpelican/pelican-plugins ~/pelican-plugins
+- [ ] pip install rpy2
