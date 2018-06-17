@@ -11,3 +11,14 @@ github pages repo for my blog
 - [ ] Theme blog git repo - https://github.com/alexandrevicenzi/blog 
 - [ ] Theme git repo (and wiki) - https://github.com/alexandrevicenzi/Flex 
 - [ ] Building data science portfolio - https://www.dataquest.io/blog/data-science-portfolio-project/ 
+- [ ] Pelican help blog - http://nafiulis.me/making-a-static-blog-with-pelican.html
+
+
+Setup Steps - 
+- [ ] conda create --name portfolio python=3.5
+- [ ] source activate portfolio
+- [ ] pip install pelican
+- [ ] pip install markdown
+- [ ] pip install Fabric
+- [ ] pip install livereload
+- [ ] pip install ghp-import
