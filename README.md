@@ -6,6 +6,7 @@ github pages repo for my blog
 - fab enter_dns_file - add dns file before pushing to master github
 - fab github - push files to github on to the prod blog
 - fab make_entry:"India Transportation Accidents Exploration Project" - Add new article with the title
+- fab build_rmd - Render R Markdown files
 - Theme blog - https://blog.alexandrevicenzi.com/ 
 - Theme blog conf file - https://github.com/alexandrevicenzi/blog/blob/master/pelicanconf.py 
 - Theme blog git repo - https://github.com/alexandrevicenzi/blog 
