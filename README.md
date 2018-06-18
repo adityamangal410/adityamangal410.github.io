@@ -25,3 +25,6 @@ Setup Steps -
 - git clone --recursive https://github.com/getpelican/pelican-themes ~/pelican-themes
 - git clone --recursive https://github.com/getpelican/pelican-plugins ~/pelican-plugins
 - pip install rpy2
+- conda install -c r r
+- Make sure you have updated xcode
+- inside R, install.packages("knits")
