@@ -17,14 +17,6 @@ github pages repo for my blog
 Setup Steps - 
 - conda create --name portfolio python=3.5
 - source activate portfolio
-- pip install pelican
-- pip install markdown
-- pip install Fabric3
-- pip install livereload
-- pip install ghp-import
+- conda install -c conda-forge -c anaconda -c r pelican markdown fabric3 livereload rpy2 r-knitr r-tidyverse
 - git clone --recursive https://github.com/getpelican/pelican-themes ~/pelican-themes
 - git clone --recursive https://github.com/getpelican/pelican-plugins ~/pelican-plugins
-- pip install rpy2
-- conda install -c r r
-- Make sure you have updated xcode
-- inside R, install.packages("knits")
