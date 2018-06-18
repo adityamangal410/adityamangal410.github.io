@@ -12,6 +12,7 @@ github pages repo for my blog
 - Theme git repo (and wiki) - https://github.com/alexandrevicenzi/Flex 
 - Building data science portfolio - https://www.dataquest.io/blog/data-science-portfolio-project/ 
 - Pelican help blog - http://nafiulis.me/making-a-static-blog-with-pelican.html
+- Pelican Rmarkdown setup blog - http://michaeltoth.me/how-to-write-pelican-blog-posts-using-rmarkdown-knitr-20.html
 
 
 Setup Steps - 
