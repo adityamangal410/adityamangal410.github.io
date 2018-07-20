@@ -19,7 +19,7 @@ github pages repo for my blog
 Setup Steps - 
 - conda create --name portfolio python=3.5
 - source activate portfolio
-- conda install -c conda-forge -c anaconda -c r pelican markdown fabric3 livereload rpy2 r-knitr r-tidyverse r-leaflet r-rgeos r-base r-rgdal libgdal r-webshot
+- conda install -c conda-forge -c anaconda -c r pelican markdown fabric3 livereload rpy2 r-knitr r-tidyverse r-leaflet r-rgeos r-base r-rgdal libgdal r-webshot r-highcharter
 - or conda env create -f environment.yml
 - git clone --recursive https://github.com/getpelican/pelican-themes ~/pelican-themes
 - git clone --recursive https://github.com/getpelican/pelican-plugins ~/pelican-plugins
