@@ -19,7 +19,8 @@ github pages repo for my blog
 Setup Steps - 
 - conda create --name portfolio python=3.5
 - source activate portfolio
-- conda install -c conda-forge -c anaconda -c r pelican markdown fabric3 livereload rpy2 r-knitr r-tidyverse r-leaflet r-rgeos r-base r-rgdal libgdal r-webshot r-highcharter
+- conda install -c conda-forge -c anaconda -c r pelican markdown fabric3 livereload rpy2 r-knitr r-tidyverse r-leaflet r-rgeos r-base r-rgdal libgdal r-webshot r-devtools libxml2 r-xml
 - or conda env create -f environment.yml
+- Enter R using R cli and run devtools::install_github("jbkunst/highcharter")
 - git clone --recursive https://github.com/getpelican/pelican-themes ~/pelican-themes
 - git clone --recursive https://github.com/getpelican/pelican-plugins ~/pelican-plugins
