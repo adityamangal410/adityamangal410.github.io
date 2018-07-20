@@ -1,0 +1,298 @@
+---
+title: California Housing
+author: Aditya Mangal
+date: "5/19/2018"
+output:
+  word_document: default
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(error = FALSE)
+```
+## Loading Required libraries
+
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(gbm)
+library(moments)
+library(leaflet)
+library(fpc)
+library(usedist)
+library(geosphere)
+```
+
+# Data Exploration
+## Importing calif_stats315B data
+
+```{r}
+col_names = c("MedHouseVal", "MedInc", "HousingMedAge", 
+              "AvgNoRooms", "AvgNoBrooms", "Population",
+              "AvgOccup", "Lat", "Lon")
+califData = read_csv("calif_stats315B.csv", col_names = col_names)
+califData
+```
+
+Lets summarize the data to see what kind of variables we are dealing with.    
+
+```{r}
+califData %>% 
+  summary()
+```
+
+As we see above AvgOccup has an abnormally high Max value of `r max(califData$AvgOccup)`. Something does not look right because Average Occupancy of a neighbourhood can not be this high, plotting a density plot with gaussian kernel of this variable to better visualize its values.   
+
+
+```{r}
+califData %>% 
+  ggplot(aes(AvgOccup)) +
+  geom_density(kernel = "gaussian")
+```
+
+```{r}
+skewness(califData$AvgOccup)
+```
+
+The above plot and corresponding skewness value confirms the misbehaving datapoint(s). We see high positive skew for this variable. Lets try and see the datapoints with abnormally high AvgOccup values.    
+
+```{r}
+califData %>% 
+  arrange(desc(AvgOccup))
+```
+
+As we see above, the top datapoints have unusually high Average Occupancy, even though the other variables in these rows seem just fine. Assuming there might be some misreporting in this data, lets see if we can remove these datapoints and still retain the variance.        
+
+```{r}
+newSkew = skewness(califData[califData$AvgOccup<6,]$AvgOccup)
+newSkew
+dataRetention = (nrow(califData[califData$AvgOccup<6,])/nrow(califData)) * 100
+dataRetention
+```
+
+
+While trying to find out the value at which to clip datapoints to reduce skewness in AvgOccup and maximize retention of data, we find that if clip off AvgOccup values higher than 6, we have `r newSkew` as skewness value of AvgOccup and retain `r dataRetention` of data. Replotting the density plot of AvgOccup with clipped off values.   
+
+```{r}
+califData %>% 
+  filter(AvgOccup < 6) %>% 
+  ggplot(aes(AvgOccup)) +
+  geom_density(kernel = "gaussian")
+```
+
+
+```{r}
+califData %>% 
+  filter(AvgOccup < 6) %>% 
+  summarise(mean(AvgOccup), median(AvgOccup), sd(AvgOccup))
+```
+
+The above plot looks closer to a normal distribution and we have ~99.02% data within 3 standard deviations of the mean. So we'll keep the transformation.   
+
+```{r}
+califData = califData %>% 
+  filter(AvgOccup < 6)
+```
+
+## Visualizing Lat Lons
+
+```{r}
+califData %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  setView(median(califData$Lon), median(califData$Lat), zoom = 5) %>% 
+  addCircles(~Lon, ~Lat, weight = 3, data = califData, fillOpacity = 0.8, color = "blue")
+```
+
+Intuitively, Median House Value should be impacted by the general area of the house. For example, we should expect higher median house values for Los Angeles, San Diego and San Francisco Bay areas. In order to identify that, I have used [DBSCAN](https://en.wikipedia.org/wiki/DBSCAN) algorithm to cluster (Lat,Lon) and add that as a feature to our dataset.
+
+```{r}
+distTrain = califData %>% 
+  select(Lon, Lat)
+distClusters = dbscan(distTrain, eps = 0.05, method = "hybrid", MinPts = 5)
+califData$Cluster = as.factor(distClusters$cluster)
+califData = califData %>% 
+  mutate(label = str_c(sep = " , ", Lon, Lat, Cluster, MedHouseVal))
+groups = califData %>% 
+  filter(Cluster != 0)
+noise = califData %>% 
+  filter(Cluster == 0)
+factpal = colorFactor(topo.colors(length(unique(groups$Cluster))), groups$Cluster)
+```
+
+```{r}
+califData %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  setView(median(califData$Lon), median(califData$Lat), zoom = 5) %>% 
+  addCircles(~Lon, ~Lat, weight = 3, data = noise, fillOpacity = 0.8, color = "black", label = ~label) %>% 
+  addCircles(~Lon, ~Lat, weight = 10, data = groups, fillOpacity = 0.8, color = ~factpal(Cluster), label = ~label)
+```
+
+As can be seen from the plot above, this crude clustering is able to identify areas fairly well. Without tuning it further (since thats not the goal of this exercise), lets try to visualize the top 3 areas based on median MedHouseVal.
+
+```{r}
+top3Areas = califData %>% 
+  group_by(Cluster) %>% 
+  summarise(m = mean(MedHouseVal), md = median(MedHouseVal)) %>% 
+  top_n(3, md) %>% 
+  select(Cluster)
+```
+```{r}
+top3Areas = califData %>% 
+  filter(Cluster %in% top3Areas$Cluster)
+top3Areas %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  setView(median(top3Areas$Lon), median(top3Areas$Lat), zoom = 5) %>% 
+  addCircles(~Lon, ~Lat, weight = 10, data = top3Areas, fillOpacity = 0.8, color = ~factpal(Cluster), label = ~label)
+```
+
+The above plot shows the areas, Carmel (Near Monterey) and Santa Barbara (Near Los Angeles), have the highest median MedHouseVal which aligns with our knowledge about these areas. Therefore, we'll add this feature to our training dataset and see how it affects our model.   
+
+# Training
+## Shuffling Data
+
+```{r}
+set.seed(1324)
+#Removing 'label' field created for visualizing
+califData = califData %>% 
+  select(-label)
+x = califData[sample(nrow(califData)),]
+```
+
+```{r}
+shrinkage = 0.025
+cv.folds = 10
+n.trees = 10000
+```
+
+Applying *gbm* for full data where 80% of it will be used for training and shrinkage, cv.folds and n.trees parameters equal to `r shrinkage`, `r cv.folds` and `r n.trees` respectively. Since, we are running regression, using *gaussian* distribution.     
+
+
+```{r}
+set.seed(3214)
+gbm0 = gbm(MedHouseVal~., data = x, train.fraction = 0.8, 
+           interaction.depth = 4, shrinkage = shrinkage, cv.folds = cv.folds,
+           distribution = "gaussian", n.trees = n.trees, verbose = F)
+```
+
+
+Using cross-validation, lets see what is the optimal number of boosting iterations.   
+
+
+```{r}
+best.iter_test = gbm.perf(gbm0, method = "cv")
+best.iter_test
+```
+
+
+The above plot shows that for `r best.iter_test` iterations we get the most optimal tree. Making predictions using this optimal number.    
+
+
+```{r}
+gbm0.predict = predict(gbm0, x, type = "response", n.trees = best.iter_test)
+```
+```{r}
+ResidualSumOfSquares = sum((gbm0.predict - x$MedHouseVal)^2)
+ResidualSumOfSquares
+TotalSumOfSquares = sum((x$MedHouseVal - mean(x$MedHouseVal))^2)
+TotalSumOfSquares
+Rsquared = 1 - ResidualSumOfSquares/TotalSumOfSquares
+Rsquared
+RMSE = sqrt(ResidualSumOfSquares/nrow(x))
+RMSE
+```
+
+## Part a   
+As can be seen from the result above, we get an Rsquared value of `r Rsquared` and a root mean squared error value of `r RMSE`. As Rsquared can be a maximum of 1, our model is fairly accurate at predicting the median house value given other predictors.   
+
+## Part b. Identify most important variables
+
+We can now summarize the model and see the relative importance of predictors.   
+
+
+```{r fig.height=14, fig.width=10}
+summary(gbm0,main="RELATIVE INFLUENCE OF ALL PREDICTORS")
+```
+
+As can be seen above, MedInc, Cluster (custom engineered feature) and AvgOccup are the 3 most important predictors. Lets dig deeper to see their partial dependence plots.    
+
+### Part (c) Partial dependence plots   
+
+```{r}
+plot(x = gbm0, i = "MedInc", n.trees = best.iter_test, 
+     main = "Partial Dependence of Median Income")
+```
+
+
+As can be seen from the plot above, in general, houses with high Median Income will have higher MedianHouseValue. But after around MedInc=9, we dont see any major effect of increasing MedInc.    
+
+```{r}
+plot(x = gbm0, i = "Cluster", n.trees = best.iter_test, 
+     main = "Partial Dependence of Cluster")
+```
+
+Since Cluster values are arbitrarily assigned factor values, they should not hold any meaningful value as it is compared to the model, which is what we see in the plot above.   
+
+```{r}
+plot(gbm0, i="AvgOccup", n.trees = best.iter_test, 
+     main = "Partial Dependence of Average Occupancy")
+```
+
+As can be seen from the plot above, in general, higher the Average Occupancy of the house, lower would be its median house value.     
+
+```{r}
+plot(gbm0, i="Lon", n.trees = best.iter_test, 
+     main = "Partial Dependence of Longitude")
+```
+
+```{r}
+plot(gbm0, i="Lat", n.trees = best.iter_test, 
+     main = "Partial Dependence of Latitude")
+```
+
+Latitude and longitude have a negative correlation with house values which makes sense because most populated areas are near the tropics so that drives the prices up and very few people reside in areas which are elevated or have a high longitude.   
+
+### Plotting pair-wise partial dependence plots.   
+
+```{r}
+plot(gbm0, i = c("MedInc", "AvgOccup"), n.trees = best.iter_test, 
+     main = "Partial Dependence of Median Income and Average Occupancy")
+```
+
+From the plot above, we can see that lower average occupancy and higher median income tends towards higher median house value. 
+
+```{r}
+plot(gbm0, i = c("MedInc", "Lon"), n.trees = best.iter_test, 
+     main = "Partial Dependence of Median Income and Longitude")
+```
+
+```{r}
+plot(gbm0, i = c("MedInc", "Lat"), n.trees = best.iter_test, 
+     main = "Partial Dependence of Median Income and Latitude")
+```
+
+There is correlation between median income and longitude/latitude. The lower the longitude/latitude and higher the median income, higher is the house value.     
+
+
+```{r}
+plot(gbm0, i = c("Lon", "AvgOccup"), n.trees = best.iter_test, 
+     main = "Partial Dependence of Longitude and Average Occupancy")
+```
+
+```{r}
+plot(gbm0, i = c("Lat", "AvgOccup"), n.trees = best.iter_test, 
+     main = "Partial Dependence of Latitude and Average Occupancy")
+```
+
+```{r}
+plot(gbm0, i = c("Lon", "Lat"), n.trees = best.iter_test, 
+     main = "Partial Dependence of Longitude and Latitude")
+```
+
+There does not seem to be any correlation between latitude and longitude.   
