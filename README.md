@@ -24,3 +24,4 @@ Setup Steps -
 - Enter R using R cli and run devtools::install_github("jbkunst/highcharter")
 - git clone --recursive https://github.com/getpelican/pelican-themes ~/pelican-themes
 - git clone --recursive https://github.com/getpelican/pelican-plugins ~/pelican-plugins
+- Work in gh-pages branch
