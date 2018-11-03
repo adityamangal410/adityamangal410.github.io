@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- #
 from __future__ import unicode_literals
+import os
 
 AUTHOR = u'Aditya Mangal'
 SITENAME = u"Aditya Mangal's Blog"
@@ -61,7 +62,8 @@ DEFAULT_PAGINATION = 8
 
 THEME = 'Flex'
 
-PLUGIN_PATHS = ['/Users/amangal/pelican-plugins/']
+HOME = os.environ['HOME']
+PLUGIN_PATHS = [HOME + '/pelican-plugins/']
 #PLUGINS = ['sitemap', 'rmd_reader']
 PLUGINS = ['sitemap']
 
